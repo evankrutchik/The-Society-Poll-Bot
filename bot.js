@@ -1,15 +1,27 @@
 require('dotenv').config();
 
-const { Client, GatewayIntentBits } = require('discord.js');
-const cron = require('node-cron');
 const express = require('express');
+const cron = require('node-cron');
+const { Client, GatewayIntentBits } = require('discord.js');
 
 const app = express();
-app.get('/', (req, res) => res.send('Bot is running'));
-app.listen(3000, () => console.log('Web server running'));
+const PORT = process.env.PORT || 3000;
 
-const TOKEN = process.env.BOT_TOKEN;
-const CHANNEL_ID = process.env.CHANNEL_ID;
+app.get('/', (req, res) => {
+  res.send('The Society Poll Bot is running.');
+});
+
+app.listen(PORT, () => {
+  console.log(`Web server running on port ${PORT}`);
+});
+
+const TOKEN = process.env.BOT_TOKEN?.trim();
+const CHANNEL_ID = process.env.CHANNEL_ID?.trim();
+
+if (!TOKEN || !CHANNEL_ID) {
+  console.error('Missing BOT_TOKEN or CHANNEL_ID');
+  process.exit(1);
+}
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
@@ -19,10 +31,13 @@ async function postDailyPoll() {
   try {
     const channel = await client.channels.fetch(CHANNEL_ID);
 
-    if (!channel || !channel.isTextBased()) return;
+    if (!channel || !channel.isTextBased()) {
+      console.error('Channel not found or not text-based.');
+      return;
+    }
 
     await channel.send({
-      content: '@everyone Lock in ^',
+      content: '@everyone Lock in',
       allowedMentions: { parse: ['everyone'] },
       poll: {
         question: { text: 'How did you execute today?' },
@@ -30,16 +45,16 @@ async function postDailyPoll() {
           { text: 'Win', emoji: { name: '✅' } },
           { text: 'Loss', emoji: { name: '❌' } },
           { text: 'Breakeven', emoji: { name: '➖' } },
-          { text: 'No trade', emoji: { name: '🚫' } },
+          { text: 'No trade', emoji: { name: '🚫' } }
         ],
         duration: 24,
-        allowMultiselect: false,
-      },
+        allowMultiselect: false
+      }
     });
 
-    console.log('Poll sent');
-  } catch (err) {
-    console.error(err);
+    console.log(`Poll posted successfully at ${new Date().toLocaleString()}`);
+  } catch (error) {
+    console.error('Failed to post poll:', error);
   }
 }
 
@@ -51,12 +66,10 @@ client.once('clientReady', () => {
     async () => {
       await postDailyPoll();
     },
-    {
-      timezone: 'America/New_York',
-    }
+    { timezone: 'America/New_York' }
   );
 
-  console.log('Scheduler running');
+  console.log('Scheduler running: weekdays at 5:00 PM ET');
 });
 
 client.login(TOKEN);
