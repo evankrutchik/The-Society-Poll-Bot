@@ -2,14 +2,14 @@ require('dotenv').config();
 
 const { Client, GatewayIntentBits } = require('discord.js');
 const cron = require('node-cron');
+const express = require('express');
 
-const TOKEN = process.env.BOT_TOKEN?.trim();
-const CHANNEL_ID = process.env.CHANNEL_ID?.trim();
+const app = express();
+app.get('/', (req, res) => res.send('Bot is running'));
+app.listen(3000, () => console.log('Web server running'));
 
-if (!TOKEN || !CHANNEL_ID) {
-  console.error('Missing BOT_TOKEN or CHANNEL_ID in .env');
-  process.exit(1);
-}
+const TOKEN = process.env.BOT_TOKEN;
+const CHANNEL_ID = process.env.CHANNEL_ID;
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
@@ -19,13 +19,10 @@ async function postDailyPoll() {
   try {
     const channel = await client.channels.fetch(CHANNEL_ID);
 
-    if (!channel || !channel.isTextBased()) {
-      console.error('Channel not found or is not a text channel.');
-      return;
-    }
+    if (!channel || !channel.isTextBased()) return;
 
     await channel.send({
-      content: '@everyone Lock in',
+      content: '@everyone Lock in ^',
       allowedMentions: { parse: ['everyone'] },
       poll: {
         question: { text: 'How did you execute today?' },
@@ -40,13 +37,13 @@ async function postDailyPoll() {
       },
     });
 
-    console.log(`Poll posted successfully at ${new Date().toLocaleString()}`);
-  } catch (error) {
-    console.error('Failed to post poll:', error);
+    console.log('Poll sent');
+  } catch (err) {
+    console.error(err);
   }
 }
 
-client.once('clientReady', async () => {
+client.once('clientReady', () => {
   console.log(`Logged in as ${client.user.tag}`);
 
   cron.schedule(
@@ -59,7 +56,7 @@ client.once('clientReady', async () => {
     }
   );
 
-  console.log('Scheduler running: weekdays at 5:00 PM ET');
+  console.log('Scheduler running');
 });
 
 client.login(TOKEN);
